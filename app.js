@@ -1,13 +1,3 @@
-/*
-    Sequenza per creare un sistema di gestione delle credenziali tramite cockies 
-    utilizzando:
-
-    express-session
-    passport
-    passport-local
-    passport-local-mongoose
-*/
-
 //jshint esversion:6
 require('dotenv').config();
 
@@ -22,7 +12,6 @@ const passport = require ("passport");
 //  3 RICHIAMARE PASSPORT-LOCAL-MONGOOSE  >>> NON E' NECESSARIO RICHIAMARE PASSPORT-LOCAL
 const passportLocalMongoose = require ("passport-local-mongoose");
 
-
 const app = express();
 app.set('view engine', 'ejs');
 app.use(express.static("public"));
@@ -34,7 +23,7 @@ app.use(bodyParser.urlencoded({extended:true}));
 */
 
 app.use(session({
-  secret: "Our little secret.",
+  secret: "Our little test",
   resave: false,
   saveUninitialized: true
 }));
@@ -68,10 +57,12 @@ const User = mongoose.model("User", userSchema);
     7 INSERIRE LA CONFIGURAZIONE DI PASSPORT-LOCAL-MONGOOSE ALLA FINE
 */
 
+
 passport.use(User.createStrategy());
 
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
+
 
 
 app.get("/", (req, res)=>{
@@ -92,56 +83,34 @@ app.get("/secrets", (req, res)=>{
     } else {
         res.redirect("/login");
     }
-    
 });
 
 
-app.post("/register", (req, res)=>{   
-    //USARE IL METODO DI PASSPORT-LOCAL-MONGOOSE .register(user, password, cb)
-    User.register({username: req.body.username}, req.body.password, (err, user)=>{
+app.post('/register', (req, res)=>{
+    User.register({username: req.body.username, active: true}, req.body.password, (err, user)=>{
         if (err){
-            console.log(err);
-            res.redirect("/register");
-        } else {
-            /* 
-            Il metodo authenticate ritorna una funzione che prende in ingresso 
-            3 parametri per questo si apre una parentesi dopo l'invocazione 
-            del metodo:
-
-                return function authenticate(req, res, next) {....}
-
-            */
-            passport.authenticate("local")
-            //PARAMETRI DELLA FUNZIONE RIORNATA DA AUTHENTICATE
-            (req, res, ()=>{res.redirect("/secrets")}); 
+            console.log(user);
         }
+        //Utilizzo il metodo LOGIN di passport
+        req.login(user, function(err) {
+            if (err) { console.log(err);}
+            res.redirect('/secrets');
+          }); 
     });
 });
 
-
-
-app.post("/login", (req, res)=>{
-    const user = new User({
-        username: req.body.username,
-        password: req.body.password
-    });
-    //USARE IL METODO LOGIN DI PASSPORT
-    req.login(user, (err)=>{
-        if (err){
-            console.log(err);
-        } else {
-            passport.authenticate("local")(req, res, ()=>{
-                res.redirect("/secrets");
-            });
-        }
-    });
-}); 
+app.post('/login', 
+  passport.authenticate('local', 
+  { 
+    successRedirect: "/secrets",
+    failureRedirect: "/login" })
+  );
 
 app.get("/logout", (req, res)=>{
     //USARE IL METODO LOGOUT DI PASSPORT
     req.logout();
     res.redirect("/");
-})
+});
 
 
 
